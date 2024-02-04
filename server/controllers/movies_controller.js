@@ -2,28 +2,45 @@ const Movies = require('../models/movies_model');
 const cloudinary = require('../utils/cloudinary');
 
 const createMovie = async (req, res) => {
-    let videoUrl;
-    // let publicId;
+    let videoUrl, image, publicId;
+
     try {
-        const { title, genere, description, image } = req.body;
-        await cloudinary.uploader.upload(req.file.path, { resource_type: 'video' }, (err, result) => {
-            if (err) {
-                console.log(err);
-                res.status(500).json({ message: err.message });
-            } else {
-                console.log(result);
-                videoUrl = result.secure_url;
-                publicId = result.public_id;
-            }
-        });
+        const { title, genere, description } = req.body;
+
+        if (req.files['videoUrl']) {
+            const videoFile = req.files['videoUrl'][0];
+            await cloudinary.uploader.upload(videoFile.path, { resource_type: 'video' }, (err, result) => {
+                if (err) {
+                    console.log(err);
+                    res.status(500).json({ message: err.message });
+                } else {
+                    console.log(result);
+                    videoUrl = result.secure_url;
+                    publicId = result.public_id;
+                }
+            });
+        }
+
+        if (req.files['image']) {
+            const imageFile = req.files['image'][0];
+            await cloudinary.uploader.upload(imageFile.path, { resource_type: 'image' }, (err, result) => {
+                if (err) {
+                    console.log(err);
+                    res.status(500).json({ message: err.message });
+                } else {
+                    console.log(result);
+                    image = result.secure_url;
+                }
+            });
+        }
 
         const newMovie = new Movies({
             title,
             genere,
             description,
             videoUrl,
-            publicId: publicId,
-            // image
+            publicId,
+            image,
         });
 
         await newMovie.save();
@@ -32,23 +49,24 @@ const createMovie = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-}
+};
+
 
 const getMovie = async (req, res) => {
     try {
-        const movieId = req.body.id;
+        const movieId = req.params.id; // Extract movieId from URL params
         const movie = await Movies.findById(movieId);
+
         if (!movie) {
-            res.status(404).json({ message: 'Movie not found' });
+            return res.status(404).json({ message: 'Movie not found' });
         }
 
-        res.status(200).json({ message: 'Movie fetched', movie });
-
-
+        return res.status(200).json({ message: 'Movie fetched', movie });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({ message: error.message });
     }
-}
+};
+
 
 const getMovies = async (req, res) => {
     try {
@@ -68,19 +86,19 @@ const searchMovie = async (req, res) => {
     try {
         const title = req.body.title;
         console.log('query', title);
-        const searchResult = await Movies.find({ title: title });
+        const searchResult = await Movies.find({ title: { $regex: title, $options: 'i' } });
 
-        if (!searchResult) {
+        if (!searchResult.length) {
             console.log('No result with the respected title');
+            return res.status(404).json({ message: 'No movies found with the provided title' });
         }
 
-        res.status(200).json({ message: 'search successfull', searchResult });
-
+        res.status(200).json({ message: 'Search successful', searchResult });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
+};
 
-}
 
 const filter = async (req, res) => {
     try {
@@ -92,9 +110,34 @@ const filter = async (req, res) => {
     }
 }
 
+const rateMovie = async (req, res) => {
+    try {
+        const { userId, movieId, value } = req.body;
+        const movie = await Movies.findById(movieId);
+
+        if (!movie) {
+            res.status(404).json({ message: 'Movie not found' });
+
+        }
+
+        const existRating = movie.rating.find((rate) => rate.userId.equals(userId));
+        if (existRating) {
+            existRating.value = value
+        } else {
+            movie.rating.push({ userId, value });
+        }
+
+        await movie.save();
+
+        res.status(200).json({ message: 'Movie rated success fully' })
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+
 const stream = async (req, res) => {
     try {
-        const publicId = req.body.publicId;
+        const publicId = req.params.publicId;
         if (!publicId) {
             res.status(404).json({ message: 'Movie not Found' });
         }
@@ -131,6 +174,7 @@ module.exports = {
     filter,
     stream,
     downloadMovie,
-    
-    
+    rateMovie,
+
+
 };

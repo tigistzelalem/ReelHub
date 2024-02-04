@@ -22,16 +22,17 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({
     storage: storage,
-    fileFilter: fileFilter,
+    // fileFilter: fileFilter,
 });
 
-router.post("/createMovie", upload.single('videoUrl'), moviesController.createMovie);
-router.get("/search", moviesController.searchMovie);
+router.post("/createMovie", upload.fields([{name: 'image'}, {name: 'videoUrl'}]), moviesController.createMovie);
+router.post("/search", moviesController.searchMovie);
 router.get("/getMovies", moviesController.getMovies);
 router.get('/getMovie/:id', moviesController.getMovie);
 router.get("/filter", moviesController.filter);
 router.get("/stream/:publicId", moviesController.stream);
 router.get("/download/:publicId", moviesController.downloadMovie);
+router.post("/rate", moviesController.rateMovie);
 
 
 

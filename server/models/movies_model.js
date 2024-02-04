@@ -32,6 +32,25 @@ const MovieSchema = new Schema({
         type: String
     },
 
+    rating: [
+        {
+            userId: {
+            type: Schema.Types.ObjectId,
+            res: 'User',
+            required: true
+        },
+            value: {
+                type: Number,
+                required: true,
+                min: 1,
+                max: 5,
+
+
+        }
+        }
+
+    ]
+
 
 });
 

@@ -1,4 +1,5 @@
 const Rating = require('../models/rate');
+const Movie = require('../models/movies_model');
 
 const rateMovie = async (req, res) => {
     try {
@@ -33,8 +34,36 @@ const getMovieRating = async (req, res) => {
 
     }
 }
+const topRated = async (req, res) => {
+    try {
+        const topRatedMovies = await Rating.aggregate([
+            {
+                $group: {
+                    _id: "$movieId",
+                    averageRating: { $avg: "$rating" },
+                },
+            },
+            {
+                $match: { averageRating: { $gte: 4.5 } }, // Adjust the rating threshold
+            },
+        ]);
+
+        // Extract movie IDs from the aggregation result
+        const movieIds = topRatedMovies.map((rating) => rating._id);
+
+        // Retrieve movie details for the top-rated movies
+        const movies = await Movie.find({ _id: { $in: movieIds } });
+
+        res.json(movies);
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+    
+}
 
 module.exports = {
     rateMovie,
     getMovieRating,
+    topRated
 }
